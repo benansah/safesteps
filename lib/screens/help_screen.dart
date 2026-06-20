@@ -1,84 +1,169 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher_string.dart';
-import '../core/constants.dart';
-import '../providers/game_provider.dart';
-import '../providers/user_provider.dart';
-import '../services/storage_service.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../theme/app_theme.dart';
 
 class HelpScreen extends StatelessWidget {
   const HelpScreen({super.key});
 
-  Future<void> _launchHelp(BuildContext context) async {
-    final provider = Provider.of<GameProvider>(context, listen: false);
-    final userProvider = Provider.of<UserProvider>(context, listen: false);
-    final sessionId = provider.riskScore?.sessionId ?? provider.currentScenario?.id ?? 'unknown';
-    final message = Uri.encodeComponent('Hello, I need help. I feel unsafe. Please contact me.');
-    final url = 'https://wa.me/${hotlineNumber.replaceAll('+', '')}?text=$message';
-    await StorageService.instance.logHelpActivation(sessionId: sessionId);
-    await userProvider.incrementHelpCount();
-    await StorageService.instance.syncGameLogs();
-    if (await canLaunchUrlString(url)) {
-      await launchUrlString(url);
+  // PLACEHOLDER — replace with a real helpline number before deployment.
+  static const _helpNumber = '+233000000000';
+
+  Future<void> _openWhatsApp(BuildContext context) async {
+    const message = 'Hello, I need help. I feel unsafe.';
+    final encoded = Uri.encodeComponent(message);
+    final number = _helpNumber.replaceAll('+', '');
+    final uri = Uri.parse('https://wa.me/$number?text=$encoded');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+                'Could not open WhatsApp. Please ask a trusted adult for help.'),
+            backgroundColor: Color(0xFFE74C3C),
+          ),
+        );
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final userProvider = Provider.of<UserProvider>(context);
-
     return Scaffold(
-      backgroundColor: const Color(0xFF1A5276),
-      appBar: AppBar(backgroundColor: const Color(0xFF1A5276), title: const Text('Help')),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(userProvider.translate('helpTitle'), style: Theme.of(context).textTheme.titleLarge?.copyWith(color: Colors.white)),
-              const SizedBox(height: 24),
-              Text(userProvider.translate('helpConfirm'), style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.white)),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-                onPressed: () => _launchHelp(context),
-                child: Text(userProvider.translate('yes')),
-              ),
-              const SizedBox(height: 12),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.white),
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-                child: Text(userProvider.translate('no'), style: const TextStyle(color: Colors.black87)),
-              ),
-              const SizedBox(height: 28),
-              Container(
-                padding: const EdgeInsets.all(18),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(userProvider.translate('trustedAdult'), style: Theme.of(context).textTheme.titleMedium),
-                    const SizedBox(height: 10),
-                    const Text('Write a trusted contact name here:'),
-                    const SizedBox(height: 12),
-                    TextField(
-                      decoration: InputDecoration(
-                        hintText: 'Parent, teacher, or counselor',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                        fillColor: Colors.grey.shade100,
-                        filled: true,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: AppColors.helpGradient,
+          ),
+        ),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Back button
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(12),
                       ),
+                      child: const Icon(Icons.arrow_back_ios_new_rounded,
+                          color: Colors.white, size: 18),
                     ),
-                  ],
+                  ),
                 ),
-              ),
-            ],
+                const Spacer(),
+                // Heart icon
+                Center(
+                  child: Container(
+                    width: 100,
+                    height: 100,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Center(
+                      child: Text('💙', style: TextStyle(fontSize: 52)),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  'You are not alone.',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.baloo2(
+                    fontSize: 30,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  'It\'s okay to ask for help. 💙',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.baloo2(
+                    fontSize: 17,
+                    color: const Color(0xFFB3E5FC),
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'A trusted adult — a parent, teacher, or counselor — can always help you stay safe.',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.baloo2(
+                    fontSize: 14,
+                    color: Colors.white60,
+                    height: 1.5,
+                  ),
+                ),
+                const Spacer(),
+                // WhatsApp button
+                GestureDetector(
+                  onTap: () => _openWhatsApp(context),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 18),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF25D366), Color(0xFF128C7E)],
+                      ),
+                      borderRadius: BorderRadius.circular(18),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x5025D366),
+                          blurRadius: 16,
+                          offset: Offset(0, 6),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.chat_bubble_rounded,
+                            color: Colors.white, size: 22),
+                        const SizedBox(width: 10),
+                        Text(
+                          'Message someone for help',
+                          style: AppText.buttonLabel()
+                              .copyWith(color: Colors.white),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                // Go back button
+                GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(
+                          color: Colors.white.withOpacity(0.25), width: 1.5),
+                    ),
+                    child: Text(
+                      'Go back',
+                      textAlign: TextAlign.center,
+                      style: AppText.buttonLabel()
+                          .copyWith(color: Colors.white),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
